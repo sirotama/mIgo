@@ -1,4 +1,5 @@
 <?php
+// memo: /^@srtm\s+mecab\s+(.+)$/
 require_once 'lib/Igo.php';
 require_once 'lib/Requests/library/Requests.php';
 
