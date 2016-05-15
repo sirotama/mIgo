@@ -1,0 +1,2 @@
+# mIgo
+igo on misskey
