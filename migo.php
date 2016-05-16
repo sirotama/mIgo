@@ -37,12 +37,13 @@ while (1){
 	} else {
 		$sleepSec + 1.5;
 	};
-	$mentions = array_reverse($mentions);
+	//$mentions = array_reverse($mentions);
 	$mentionText = "";
 	foreach($mentions as $mention){
 		$mentionText = $mention->text;
 		$mentionID = $mention->id;
 		$replybody = '@'.$mention->user->screenName.' ';
+		$replybodyHeadlength = strlen($replybody);
 		//mecab
 		if(preg_match('/^@srtm mecab (.+)$/',$mentionText,$match)){
 			$igopost = $igo->parse($match[1]);
@@ -53,23 +54,37 @@ while (1){
 			}
 			$header = ['Cookie'=>'hmsk='.$hmskToken,'csrf-token'=>$csrf];
 			$postbody = ['text'=>$replybody,'in-reply-to-post-id' => $mentionID];
-			$createPost = Requests::post('http://himasaku.misskey.tk/posts/reply',$header,$postbody);
-
+			print_r($replybody);
+			//投稿可能文字数の上限に達していたらHTMLでレスポンスを返すようにする
+			if (strlen($replybody) > 3) {
+				print_r($mentionText);
+				$uploadfilebody = substr($replybody,$replybodyHeadlength);
+				$test = file_put_contents('igoTxt.txt',$uploadfilebody);
+				print_r($test);
+				$uploadTXT = ['file'=> 'igoTxt.txt'];
+				$uploadTXTtoAlbum = Requests::post('http://himasaku.misskey.tk/web/album/upload',$header,$uploadTXT);
+				print_r($uploadTXTtoAlbum);
+			} else {
+				$createPost = Requests::post('http://himasaku.misskey.tk/posts/reply',$header,$postbody);
+			}
 			sleep($sleepSec);
 		}
 		//update_name
 		if(preg_match('/^@srtm update_name (.+)$/',$mentionText,$match)){
 			$header = ['Cookie'=>'hmsk='.$hmskToken,'csrf-token'=>$csrf];
 			$renamebody = ['name'=>$match[1]];
-			$postbody = ['text'=>$replybody.$match[1].'に改名させられました。','in-reply-to-post-id' => $mentionID];
-			$updateName = Requests::post('http://himasaku.misskey.tk/account/name/update',$header,$renamebody);
-			$createPost = Requests::post('http://himasaku.misskey.tk/posts/reply',$header,$postbody);
-
+			if($match[1] > 20){
+				$postbody = ['text'=>'名前が長すぎます','in-reply-to-post-id' => $mentionID];
+				$createPost = Requests::post('http://himasaku.misskey.tk/posts/reply',$header,$postbody);
+			}else {
+				//名前が20文字以内なら改名
+				$postbody = ['text'=>$replybody.$match[1].'に改名させられました。','in-reply-to-post-id' => $mentionID];
+				$updateName = Requests::post('http://himasaku.misskey.tk/account/name/update',$header,$renamebody);
+				$createPost = Requests::post('http://himasaku.misskey.tk/posts/reply',$header,$postbody);
+			}
 			sleep($sleepSec);
 		}
 	}
-	var_dump($mentionText);
-
 
 	if($mentions != []){
 		$latestCursor = $mentions[0]->cursor;
