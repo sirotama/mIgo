@@ -24,7 +24,7 @@ $header = ['Cookie'=>'hmsk='.$hmskToken,'csrf-token'=>$csrf];
 
 $login = Requests::post('http://login.misskey.tk/',$header,$authdata);
 
-$latestCursor = 0;
+$latestCursor = file_get_contents('cursor.txt') ?: 0;
 while (1){
 $body = ['since-cursor'=>$latestCursor];
 $getMention = Requests::post('http://himasaku.misskey.tk/posts/mentions/show',$header,$body);
@@ -35,19 +35,18 @@ $mentionText = "";
 foreach($mentions as $mention){
 	$mentionText = $mention->text;
 	$mentionID = $mention->id;
-	$replybody = "";
+	$replybody = '@'.$mention->user->screenName.' ';
 	if(preg_match('/^@srtm mecab (.+)$/',$mentionText,$match)){
 		$igopost = $igo->parse($match[1]);
 		foreach($igopost as $var){
 			$replybody .= $var->feature;
 			$replybody .= $var->surface;
+			$replybody .= "\n";
 		}
 		$header = ['Cookie'=>'hmsk='.$hmskToken,'csrf-token'=>$csrf];
 		$postbody = ['text'=>$replybody,'in-reply-to-post-id' => $mentionID];
 		$createPost = Requests::post('http://himasaku.misskey.tk/posts/reply',$header,$postbody);
-		print_r($postbody);
 		sleep(3);
-		print_r($createPost->body);
 	}
 }
 var_dump($mentionText);
@@ -55,6 +54,7 @@ var_dump($mentionText);
 
 if($mentions != []){
 	$latestCursor = $mentions[0]->cursor;
+	file_put_contents('cursor.txt',$latestCursor);
 };
 sleep(3);
 }
