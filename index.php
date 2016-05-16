@@ -9,10 +9,6 @@ $igo = new Igo("./ipadic", "UTF-8");
 $text = "すもももももももものうち";
 $result = $igo->parse($text);
 
-foreach ($result as $var) {
-	echo $var->feature;
-	echo $var->surface . "<br>";
-}
 
 $getCookie = Requests::get('http://misskey.tk/');
 
@@ -28,4 +24,37 @@ $header = ['Cookie'=>'hmsk='.$hmskToken,'csrf-token'=>$csrf];
 
 $login = Requests::post('http://login.misskey.tk/',$header,$authdata);
 
-var_dump($login->body);
+$latestCursor = 0;
+while (1){
+$body = ['since-cursor'=>$latestCursor];
+$getMention = Requests::post('http://himasaku.misskey.tk/posts/mentions/show',$header,$body);
+
+$mentions = json_decode($getMention->body);
+
+$mentionText = "";
+foreach($mentions as $mention){
+	$mentionText = $mention->text;
+	$mentionID = $mention->id;
+	$replybody = "";
+	if(preg_match('/^@srtm mecab (.+)$/',$mentionText,$match)){
+		$igopost = $igo->parse($match[1]);
+		foreach($igopost as $var){
+			$replybody .= $var->feature;
+			$replybody .= $var->surface;
+		}
+		$header = ['Cookie'=>'hmsk='.$hmskToken,'csrf-token'=>$csrf];
+		$postbody = ['text'=>$replybody,'in-reply-to-post-id' => $mentionID];
+		$createPost = Requests::post('http://himasaku.misskey.tk/posts/reply',$header,$postbody);
+		print_r($postbody);
+		sleep(3);
+		print_r($createPost->body);
+	}
+}
+var_dump($mentionText);
+
+
+if($mentions != []){
+	$latestCursor = $mentions[0]->cursor;
+};
+sleep(3);
+}
